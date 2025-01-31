@@ -1,0 +1,9 @@
+torch
+transformers
+typing
+dataclasses
+logging
+datetime
+nltk
+numpy
+accelerate
