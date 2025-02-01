@@ -86,47 +86,66 @@
 
     <script>
         document.getElementById('generatorForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
+    e.preventDefault();
 
-            const loadingIndicator = document.getElementById('loadingIndicator');
-            const resultContainer = document.getElementById('resultContainer');
-            const generatedContent = document.getElementById('generatedContent');
-            const clarityScore = document.getElementById('clarityScore');
-            const coherenceScore = document.getElementById('coherenceScore');
-            const biasReport = document.getElementById('biasReport');
+    const loadingIndicator = document.getElementById('loadingIndicator');
+    const resultContainer = document.getElementById('resultContainer');
+    const generatedContent = document.getElementById('generatedContent');
+    const clarityScore = document.getElementById('clarityScore');
+    const coherenceScore = document.getElementById('coherenceScore');
+    const biasReport = document.getElementById('biasReport');
 
-            loadingIndicator.classList.remove('hidden');
-            resultContainer.classList.add('hidden');
+    loadingIndicator.classList.remove('hidden');
+    resultContainer.classList.add('hidden');
 
-            try {
-                const response = await axios.post('/generate', {
-                    subject: document.getElementById('subject').value,
-                    grade_level: document.getElementById('gradeLevel').value,
-                    prompt: document.getElementById('prompt').value
-                });
-
-                const data = response.data.data;
-
-                generatedContent.textContent = data.original_content;
-                clarityScore.textContent = data.metadata.clarity_score ? data.metadata.clarity_score + '%' : 'N/A';
-                coherenceScore.textContent = data.metadata.coherence_score ? data.metadata.coherence_score + '%' : 'N/A';
-
-                biasReport.innerHTML = '';
-                for (const [category, issues] of Object.entries(data.bias_report)) {
-                    if (issues.length > 0) {
-                        const li = document.createElement('li');
-                        li.textContent = `${category}: ${issues.join(', ')}`;
-                        biasReport.appendChild(li);
-                    }
-                }
-
-                resultContainer.classList.remove('hidden');
-            } catch (error) {
-                Swal.fire('Error', error.response ? error.response.data.message : error.message, 'error');
-            } finally {
-                loadingIndicator.classList.add('hidden');
-            }
+    try {
+        const response = await axios.post('/generate', {
+            subject: document.getElementById('subject').value,
+            grade_level: document.getElementById('gradeLevel').value,
+            prompt: document.getElementById('prompt').value
         });
+
+        const data = response.data;
+
+        // Display generated content
+        generatedContent.textContent = data.generated_content || "No content generated.";
+
+        // Display clarity and coherence scores
+        clarityScore.textContent = data.refined_content.metrics.clarity_score !== null
+            ? `${data.refined_content.metrics.clarity_score}%`
+            : "N/A";
+        coherenceScore.textContent = data.refined_content.metrics.coherence_score !== null
+            ? `${data.refined_content.metrics.coherence_score}%`
+            : "N/A";
+
+        // Display bias report
+        biasReport.innerHTML = '';
+        const biasData = data.bias_report || {};
+        const hasDetectedBias = Object.values(biasData).some(issues => issues.length > 0);
+        if (!hasDetectedBias) {
+            biasReport.innerHTML = "<p class='text-gray-600'>No bias detected.</p>";
+        } else {
+            Object.entries(biasData).forEach(([category, issues]) => {
+                if (issues.length > 0) {
+                    const categoryDiv = document.createElement('div');
+                    categoryDiv.innerHTML = `
+                        <h3 class="font-medium text-gray-700">${category}</h3>
+                        <ul class="list-disc pl-5 text-sm text-gray-600">
+                            ${issues.map(issue => `<li>${issue}</li>`).join('')}
+                        </ul>
+                    `;
+                    biasReport.appendChild(categoryDiv);
+                }
+            });
+        }
+
+        resultContainer.classList.remove('hidden');
+    } catch (error) {
+        alert('Error generating content: ' + (error.response?.data.message || error.message));
+    } finally {
+        loadingIndicator.classList.add('hidden');
+    }
+});
     </script>
 </body>
 </html>

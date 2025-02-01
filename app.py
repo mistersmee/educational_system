@@ -1,7 +1,7 @@
-# app.py
 from flask import Flask, render_template, request, jsonify
 from educational_system import ContentConfig, ContentPipeline
 import logging
+import json
 
 app = Flask(__name__)
 logging.basicConfig(level=logging.INFO)
@@ -19,23 +19,22 @@ def generate():
         grade_level = int(data.get('grade_level', 5))
         prompt = data.get('prompt', '')
 
-        config = ContentConfig(
-            subject=subject,
-            grade_level=grade_level
-        )
-        
+        # Set up the ContentConfig and run the pipeline
+        config = ContentConfig(subject=subject, grade_level=grade_level)
         pipeline = ContentPipeline(config)
-        result = pipeline.process_content(prompt)
+        pipeline.process_content(prompt)  # This writes to content_output.json
 
-        return jsonify({
-            'status': 'success',
-            'data': {
-                'original_content': result['generated_content'],
-                'refined_content': result['refined_content']['refined'],
-                'bias_report': result['bias_report'],
-                'metadata': result['metadata']
-            }
-        })
+        # Read the JSON output
+        with open("content_output.json", "r") as f:
+            result = json.load(f)
+
+        # Ensure clarity, coherence, and bias report are always included
+        result['refined_content']['metrics'].setdefault('clarity_score', None)
+        result['refined_content']['metrics'].setdefault('coherence_score', None)
+        result.setdefault('bias_report', {})
+
+        return jsonify(result)  # Send the updated JSON to the frontend
+
     except Exception as e:
         logger.error(f"Error processing content: {str(e)}")
         return jsonify({

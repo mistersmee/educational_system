@@ -292,15 +292,51 @@ class ContentRefiner:
             count += 1
         return count
 
+    def _assess_clarity(self, content: str) -> float:
+        """
+        Assess clarity of content using various metrics.
+        Returns a score between 0 and 1.
+        """
+        sentences = sent_tokenize(content)
+
+        # Calculate sentence length score
+        avg_sentence_length = np.mean([len(word_tokenize(sent)) for sent in sentences])
+        length_score = max(0, min(1, 1 - abs(avg_sentence_length -
+                                           self.clarity_model['ideal_sentence_length']) /
+                                           self.clarity_model['max_sentence_length']))
+
+        # Calculate transition words usage
+        transitions_found = sum(1 for sent in sentences
+                              if any(trans in sent.lower()
+                                    for trans in self.clarity_model['transition_words']))
+        transition_score = min(1.0, transitions_found / max(1, len(sentences) - 1))
+
+        # Calculate readability using syllable count
+        words = word_tokenize(content)
+        avg_syllables = np.mean([self._count_syllables(word) for word in words])
+        readability_score = max(0, min(1, 1 - (avg_syllables - 1.5) / 2))
+
+        # Combine scores using weights
+        weights = self.clarity_model['complexity_weights']
+        final_score = (
+            weights['sentence_length'] * length_score +
+            weights['transition_usage'] * transition_score +
+            weights['readability'] * readability_score
+        )
+
+        return round(final_score, 2)
+
     def refine_content(self, content: str) -> Dict[str, any]:
         """Refine the content using various metrics and improvements."""
         coherence_score = self._assess_coherence(content)
+        clarity_score = self._assess_clarity(content)
         refined_content = self._apply_refinements(content)
 
         return {
             "refined": refined_content,
             "metrics": {
-                "coherence_score": coherence_score
+                "coherence_score": coherence_score,
+                "clarity_score": clarity_score
             }
         }
 
@@ -556,7 +592,8 @@ class ContentPipeline:
                 bias_report
             )
 
-            return {
+            # Prepare result
+            result = {
                 "original_prompt": prompt,
                 "generated_content": content,
                 "refined_content": refined_content,
@@ -568,6 +605,13 @@ class ContentPipeline:
                     "timestamp": datetime.now().isoformat()
                 }
             }
+
+            # Save results to a JSON file
+            with open("content_output.json", "w") as f:
+                json.dump(result, f, indent=2)
+
+            return result
+
         except Exception as e:
             logger.error(f"Error in content pipeline: {str(e)}")
             raise
