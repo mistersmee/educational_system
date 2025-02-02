@@ -85,7 +85,7 @@
     </div>
 
     <script>
-        document.getElementById('generatorForm').addEventListener('submit', async (e) => {
+document.getElementById('generatorForm').addEventListener('submit', async (e) => {
     e.preventDefault();
 
     const loadingIndicator = document.getElementById('loadingIndicator');
@@ -95,6 +95,7 @@
     const coherenceScore = document.getElementById('coherenceScore');
     const biasReport = document.getElementById('biasReport');
 
+    // Show loading indicator and hide results initially
     loadingIndicator.classList.remove('hidden');
     resultContainer.classList.add('hidden');
 
@@ -107,10 +108,10 @@
 
         const data = response.data;
 
-        // Display generated content
-        generatedContent.textContent = data.generated_content || "No content generated.";
+        // 1. Preserve paragraph breaks in the generated content
+        generatedContent.innerHTML = data.generated_content.replace(/\n/g, '<br><br>');
 
-        // Display clarity and coherence scores
+        // 2. Display clarity and coherence scores
         clarityScore.textContent = data.refined_content.metrics.clarity_score !== null
             ? `${data.refined_content.metrics.clarity_score}%`
             : "N/A";
@@ -118,31 +119,30 @@
             ? `${data.refined_content.metrics.coherence_score}%`
             : "N/A";
 
-        // Display bias report
+        // 3. Display bias report
         biasReport.innerHTML = '';
         const biasData = data.bias_report || {};
-        const hasDetectedBias = Object.values(biasData).some(issues => issues.length > 0);
-        if (!hasDetectedBias) {
-            biasReport.innerHTML = "<p class='text-gray-600'>No bias detected.</p>";
-        } else {
-            Object.entries(biasData).forEach(([category, issues]) => {
-                if (issues.length > 0) {
-                    const categoryDiv = document.createElement('div');
-                    categoryDiv.innerHTML = `
-                        <h3 class="font-medium text-gray-700">${category}</h3>
-                        <ul class="list-disc pl-5 text-sm text-gray-600">
-                            ${issues.map(issue => `<li>${issue}</li>`).join('')}
-                        </ul>
-                    `;
-                    biasReport.appendChild(categoryDiv);
-                }
-            });
-        }
+        Object.entries(biasData).forEach(([category, issues]) => {
+            const categoryDiv = document.createElement('div');
+            categoryDiv.innerHTML = `
+                <h3 class="font-medium text-gray-700">${category.charAt(0).toUpperCase() + category.slice(1)}</h3>
+                <ul class="list-disc pl-5 text-sm text-gray-600">
+                    ${
+                        issues.length > 0
+                            ? issues.map(issue => `<li>${issue}</li>`).join('')
+                            : '<li>No issues detected.</li>'
+                    }
+                </ul>
+            `;
+            biasReport.appendChild(categoryDiv);
+        });
 
+        // Show results
         resultContainer.classList.remove('hidden');
     } catch (error) {
         alert('Error generating content: ' + (error.response?.data.message || error.message));
     } finally {
+        // Hide loading indicator
         loadingIndicator.classList.add('hidden');
     }
 });

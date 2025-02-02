@@ -341,40 +341,40 @@ class ContentRefiner:
         }
 
     def _apply_refinements(self, content: str) -> str:
-        """Apply refinements to improve content quality."""
-        sentences = sent_tokenize(content)
-        refined_sentences = []
+        """Apply refinements to improve content quality while preserving formatting."""
+        paragraphs = content.split("\n")  # Split content into paragraphs based on newlines
+        refined_paragraphs = []
 
-        for sent in sentences:
-            words = word_tokenize(sent)
+        for paragraph in paragraphs:
+            sentences = sent_tokenize(paragraph)  # Split into sentences within each paragraph
+            refined_sentences = []
 
-            # Split very long sentences
-            if len(words) > self.sentence_complexity_thresholds['words']:
-                midpoint = len(words) // 2
-                split_point = next((i for i in range(midpoint - 3, midpoint + 4)
-                                  if words[i] in {',', 'and', 'but', 'or'}), midpoint)
-                refined_sentences.extend([
-                    ' '.join(words[:split_point]),
-                    ' '.join(words[split_point:])
-                ])
-            else:
-                refined_sentences.append(sent)
+            for i, sent in enumerate(sentences):
+                words = word_tokenize(sent)
 
-        refined_content = ' '.join(refined_sentences)
+                # Split very long sentences
+                if len(words) > self.sentence_complexity_thresholds['words']:
+                    midpoint = len(words) // 2
+                    split_point = next((i for i in range(midpoint - 3, midpoint + 4)
+                                        if words[i] in {',', 'and', 'but', 'or'}), midpoint)
+                    refined_sentences.extend([
+                        ' '.join(words[:split_point]),
+                        ' '.join(words[split_point:])
+                    ])
+                else:
+                    refined_sentences.append(sent)
 
-        # Add transition words where needed
-        sentences = sent_tokenize(refined_content)
-        final_sentences = []
+                # Add transition words to sentences without transitions
+                if i > 0 and not any(
+                    transition in sentences[i - 1].lower() for transition in self.clarity_model['transition_words']
+                ):
+                    transition = "Additionally, "  # Default transition word
+                    refined_sentences[-1] = transition + refined_sentences[-1]
 
-        for i, sent in enumerate(sentences):
-            if i > 0 and not any(trans in sent.lower()
-                               for trans in self.clarity_model['transition_words']):
-                transition = 'Additionally, '
-                final_sentences.append(transition + sent)
-            else:
-                final_sentences.append(sent)
+            # Recombine sentences into paragraphs
+            refined_paragraphs.append(" ".join(refined_sentences))
 
-        return ' '.join(final_sentences)
+        return "\n".join(refined_paragraphs)  # Preserve paragraph breaks
 
 class BiasDetector:
     def __init__(self, bias_categories: List[str]):
