@@ -113,10 +113,10 @@ document.getElementById('generatorForm').addEventListener('submit', async (e) =>
 
         // 2. Display clarity and coherence scores
         clarityScore.textContent = data.refined_content.metrics.clarity_score !== null
-            ? `${data.refined_content.metrics.clarity_score}%`
+            ? `${data.refined_content.metrics.clarity_score}`
             : "N/A";
         coherenceScore.textContent = data.refined_content.metrics.coherence_score !== null
-            ? `${data.refined_content.metrics.coherence_score}%`
+            ? `${data.refined_content.metrics.coherence_score}`
             : "N/A";
 
         // 3. Display bias report
